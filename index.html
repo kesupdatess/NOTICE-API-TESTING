@@ -58,33 +58,67 @@
         </div>
     </div>
 
-   <script>
-    // KES Official RSS Feed (Yeh kabhi CORS error nahi dega!)
-    const KES_RSS = 'https://kessc.edu.in/feed/';
+  <script>
+    // Direct Notices Page URL
+    const KES_NOTICES_PAGE = 'https://kessc.edu.in/notices/';
     
-    // Free RSS to JSON Converter (GitHub Pages friendly)
-    const RSS2JSON = 'https://api.rss2json.com/v1/api.json?rss_url=';
+    // Reliable CORS Proxy for HTML Scraping
+    const PROXY = 'https://corsproxy.io/?';
 
     async function loadNotices() {
         const container = document.getElementById('notices-container');
         container.innerHTML = '<div class="loading">Fetching latest notices...</div>';
 
         try {
-            // RSS feed ko JSON mein convert karke fetch karna
-            const response = await fetch(RSS2JSON + encodeURIComponent(KES_RSS));
-            const data = await response.json();
-
-            if (data.status !== 'ok' || !data.items || data.items.length === 0) {
-                throw new Error('No notices found in RSS feed');
+            // Fetch the full HTML of the notices page via proxy
+            const response = await fetch(PROXY + encodeURIComponent(KES_NOTICES_PAGE));
+            
+            if (!response.ok) throw new Error('Failed to fetch notices page');
+            
+            const htmlText = await response.text();
+            
+            // Create a temporary DOM parser to extract notices
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlText, 'text/html');
+            
+            // Target common WordPress notice selectors
+            // Adjust these based on actual site structure if needed
+            const noticeElements = doc.querySelectorAll('.notice-item, .post-title, h2.entry-title, article.post');
+            
+            if (noticeElements.length === 0) {
+                // Fallback: Try to find any links that look like notices
+                const allLinks = Array.from(doc.querySelectorAll('a')).filter(link => 
+                    link.textContent.toLowerCase().includes('notice') || 
+                    link.href.includes('/notice/') ||
+                    link.href.includes('/news/')
+                );
+                
+                if (allLinks.length === 0) throw new Error('No notices found on page');
+                
+                container.innerHTML = allLinks.slice(0, 10).map(link => `
+                    <div class="notice-card">
+                        <div class="notice-meta">
+                            <span class="notice-date">Recent</span>
+                            <span class="notice-tag">Notice</span>
+                        </div>
+                        <div class="notice-title">${link.textContent.trim()}</div>
+                        <a href="${link.href}" target="_blank" class="read-more">View Notice →</a>
+                    </div>
+                `).join('');
+                return;
             }
 
-            // Render Notices Cards
-            container.innerHTML = data.items.map(item => {
-                const date = new Date(item.pubDate).toLocaleDateString('en-IN', { 
+            // Render extracted notices
+            container.innerHTML = Array.from(noticeElements).slice(0, 10).map(el => {
+                const titleEl = el.querySelector('h2, h3, .title') || el;
+                const linkEl = el.querySelector('a') || titleEl.querySelector('a');
+                const dateEl = el.querySelector('.date, time, .published');
+                
+                const title = titleEl.textContent.trim();
+                const link = linkEl ? linkEl.href : '#';
+                const date = dateEl ? new Date(dateEl.textContent).toLocaleDateString('en-IN', { 
                     day: 'numeric', month: 'short', year: 'numeric' 
-                });
-                // HTML tags remove karke clean text banana
-                const cleanExcerpt = item.description.replace(/<[^>]*>/g, '').trim().substring(0, 150) + '...';
+                }) : 'Recent';
                 
                 return `
                     <div class="notice-card">
@@ -92,18 +126,17 @@
                             <span class="notice-date">${date}</span>
                             <span class="notice-tag">Official</span>
                         </div>
-                        <div class="notice-title">${item.title}</div>
-                        <div class="notice-excerpt">${cleanExcerpt}</div>
-                        <a href="${item.link}" target="_blank" class="read-more">Read Full Notice →</a>
+                        <div class="notice-title">${title}</div>
+                        <a href="${link}" target="_blank" class="read-more">Read Full Notice →</a>
                     </div>
                 `;
             }).join('');
 
         } catch (err) {
-            console.error('RSS Fetch Error:', err);
+            console.error('Scraping Error:', err);
             container.innerHTML = `
                 <div class="error">
-                    <strong>️ Unable to load notices</strong><br>
+                    <strong>⚠️ Unable to load notices</strong><br>
                     <small>${err.message}</small><br>
                     <button class="refresh-btn" onclick="loadNotices()">Try Again</button>
                 </div>`;
