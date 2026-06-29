@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KES Live Notices - Dummy Site</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #2563eb; --bg: #f8fafc; --card: #ffffff; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: #0f172a; padding: 20px; line-height: 1.5; }
+        
+        .container { max-width: 700px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 40px; padding-top: 20px; }
+        .header h1 { font-size: 2rem; color: var(--primary); margin-bottom: 8px; }
+        .header p { color: #64748b; font-size: 0.95rem; }
+        .badge { display: inline-block; background: #dc2626; color: white; font-size: 0.7rem; padding: 2px 8px; border-radius: 99px; font-weight: 700; vertical-align: middle; margin-left: 8px; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        .notice-card { 
+            background: var(--card); 
+            border-radius: 16px; 
+            padding: 24px; 
+            margin-bottom: 16px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+            border-left: 5px solid var(--primary);
+            transition: all 0.2s ease;
+        }
+        .notice-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+        
+        .notice-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .notice-date { font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .notice-tag { font-size: 0.7rem; background: #eff6ff; color: var(--primary); padding: 3px 10px; border-radius: 6px; font-weight: 700; }
+        
+        .notice-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 12px; color: #1e293b; }
+        .notice-excerpt { font-size: 0.9rem; color: #475569; margin-bottom: 16px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        
+        .read-more { 
+            display: inline-flex; align-items: center; gap: 6px; 
+            color: var(--primary); text-decoration: none; font-weight: 600; font-size: 0.9rem; 
+        }
+        .read-more:hover { gap: 10px; transition: gap 0.2s; }
+
+        .loading, .error { text-align: center; padding: 60px 20px; color: #64748b; }
+        .error { background: #fef2f2; color: #991b1b; border-radius: 12px; margin-top: 20px; }
+        .refresh-btn { margin-top: 10px; padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>KES Updates <span class="badge">LIVE</span></h1>
+            <p>Real-time notices fetched from kessc.edu.in</p>
+        </div>
+
+        <div id="notices-container">
+            <div class="loading">Fetching latest notices...</div>
+        </div>
+    </div>
+
+    <script>
+        // KES WordPress API Endpoint
+        const KES_API = 'https://kessc.edu.in/wp-json/wp/v2/posts?per_page=15&_fields=id,title,date,link,excerpt';
+        // CORS Proxy to bypass browser restrictions on GitHub Pages
+        const PROXY = 'https://api.allorigins.win/get?url=';
+
+        async function loadNotices() {
+            const container = document.getElementById('notices-container');
+            
+            try {
+                // Fetch via proxy
+                const response = await fetch(PROXY + encodeURIComponent(KES_API));
+                if (!response.ok) throw new Error('Network response was not ok');
+                
+                const data = await response.json();
+                // AllOrigins wraps response in 'contents' string
+                const posts = JSON.parse(data.contents);
+
+                if (!posts || posts.length === 0) {
+                    container.innerHTML = '<div class="error">No active notices found.</div>';
+                    return;
+                }
+
+                // Render Cards
+                container.innerHTML = posts.map(post => {
+                    const date = new Date(post.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                    // Clean HTML tags from excerpt
+                    const cleanExcerpt = post.excerpt.rendered.replace(/<[^>]*>/g, '').trim().substring(0, 120) + '...';
+                    
+                    return `
+                        <div class="notice-card">
+                            <div class="notice-meta">
+                                <span class="notice-date">${date}</span>
+                                <span class="notice-tag">Official Notice</span>
+                            </div>
+                            <div class="notice-title">${post.title.rendered}</div>
+                            <div class="notice-excerpt">${cleanExcerpt}</div>
+                            <a href="${post.link}" target="_blank" class="read-more">Read Full Notice →</a>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                console.error('API Error:', err);
+                container.innerHTML = `
+                    <div class="error">
+                        <strong>⚠️ Failed to load notices</strong><br>
+                        <small>${err.message}</small><br>
+                        <button class="refresh-btn" onclick="loadNotices()">Try Again</button>
+                    </div>`;
+            }
+        }
+
+        // Load on start
+        loadNotices();
+        // Auto-refresh every 2 minutes
+        setInterval(loadNotices, 120000);
+    </script>
+    
+    <!-- Optional: Add your analytics tracker here too! -->
+    <!-- <script src="analytics-tracker.js"></script> -->
+</body>
+</html>
