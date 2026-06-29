@@ -57,12 +57,8 @@
             <div class="loading">Fetching latest notices...</div>
         </div>
     </div>
-
-  <script>
-    // Direct Notices Page URL
+<script>
     const KES_NOTICES_PAGE = 'https://kessc.edu.in/notices/';
-    
-    // Reliable CORS Proxy for HTML Scraping
     const PROXY = 'https://corsproxy.io/?';
 
     async function loadNotices() {
@@ -70,35 +66,30 @@
         container.innerHTML = '<div class="loading">Fetching latest notices...</div>';
 
         try {
-            // Fetch the full HTML of the notices page via proxy
             const response = await fetch(PROXY + encodeURIComponent(KES_NOTICES_PAGE));
-            
             if (!response.ok) throw new Error('Failed to fetch notices page');
             
             const htmlText = await response.text();
-            
-            // Create a temporary DOM parser to extract notices
             const parser = new DOMParser();
             const doc = parser.parseFromString(htmlText, 'text/html');
             
-            // Target common WordPress notice selectors
-            // Adjust these based on actual site structure if needed
-            const noticeElements = doc.querySelectorAll('.notice-item, .post-title, h2.entry-title, article.post');
+            // Target specific notice elements (WordPress standard classes)
+            const noticeElements = doc.querySelectorAll('.notice-item, .post-title, h2.entry-title, article.post, .wp-block-latest-posts__list li');
             
             if (noticeElements.length === 0) {
-                // Fallback: Try to find any links that look like notices
-                const allLinks = Array.from(doc.querySelectorAll('a')).filter(link => 
-                    link.textContent.toLowerCase().includes('notice') || 
-                    link.href.includes('/notice/') ||
-                    link.href.includes('/news/')
-                );
+                // Fallback: Find links containing 'notice' but exclude generic ones
+                const allLinks = Array.from(doc.querySelectorAll('a')).filter(link => {
+                    const text = link.textContent.trim().toLowerCase();
+                    return (text.includes('notice') || text.includes('result') || text.includes('exam')) && 
+                           !['notices', 'view all notices', 'notice board'].includes(text);
+                });
                 
-                if (allLinks.length === 0) throw new Error('No notices found on page');
+                if (allLinks.length === 0) throw new Error('No valid notices found');
                 
                 container.innerHTML = allLinks.slice(0, 10).map(link => `
                     <div class="notice-card">
                         <div class="notice-meta">
-                            <span class="notice-date">Recent</span>
+                            <span class="notice-date">New</span>
                             <span class="notice-tag">Notice</span>
                         </div>
                         <div class="notice-title">${link.textContent.trim()}</div>
@@ -108,17 +99,30 @@
                 return;
             }
 
-            // Render extracted notices
+            // Render with better date extraction
             container.innerHTML = Array.from(noticeElements).slice(0, 10).map(el => {
-                const titleEl = el.querySelector('h2, h3, .title') || el;
-                const linkEl = el.querySelector('a') || titleEl.querySelector('a');
-                const dateEl = el.querySelector('.date, time, .published');
+                const titleEl = el.querySelector('h2, h3, .title, a') || el;
+                const linkEl = el.querySelector('a') || titleEl;
+                const dateEl = el.querySelector('.date, time, .published, .post-date');
                 
-                const title = titleEl.textContent.trim();
-                const link = linkEl ? linkEl.href : '#';
-                const date = dateEl ? new Date(dateEl.textContent).toLocaleDateString('en-IN', { 
-                    day: 'numeric', month: 'short', year: 'numeric' 
-                }) : 'Recent';
+                let title = titleEl.textContent.trim();
+                let link = linkEl.href || '#';
+                let date = 'New';
+                
+                // Try multiple date formats
+                if (dateEl) {
+                    const rawDate = dateEl.textContent.trim();
+                    const parsed = new Date(rawDate);
+                    if (!isNaN(parsed.getTime())) {
+                        date = parsed.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                    } else {
+                        // Handle relative dates like "2 days ago"
+                        date = rawDate;
+                    }
+                }
+                
+                // Skip empty or duplicate titles
+                if (!title || title.toLowerCase() === 'notices') return '';
                 
                 return `
                     <div class="notice-card">
@@ -130,20 +134,19 @@
                         <a href="${link}" target="_blank" class="read-more">Read Full Notice →</a>
                     </div>
                 `;
-            }).join('');
+            }).filter(item => item !== '').join('');
 
         } catch (err) {
             console.error('Scraping Error:', err);
             container.innerHTML = `
                 <div class="error">
-                    <strong>⚠️ Unable to load notices</strong><br>
+                    <strong>️ Unable to load notices</strong><br>
                     <small>${err.message}</small><br>
                     <button class="refresh-btn" onclick="loadNotices()">Try Again</button>
                 </div>`;
         }
     }
 
-    // Load immediately and refresh every 5 minutes
     loadNotices();
     setInterval(loadNotices, 300000);
 </script>
