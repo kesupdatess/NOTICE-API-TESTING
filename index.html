@@ -37,6 +37,7 @@
         }
         .header p { color: #666; font-size: 0.9rem; }
 
+        /* EXACT KES LIST STYLE */
         .kes-list { list-style: none; }
         
         .kes-item {
@@ -136,18 +137,20 @@
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(htmlText, 'text/html');
                     
-                    // Multiple Selectors Try Karo
-                    let items = Array.from(doc.querySelectorAll('.wp-block-latest-posts__list li'));
+                    // Targeting the EXACT structure found in your HTML file
+                    // KES uses: ul.wp-block-post-template > li.wp-block-post > article > ... > p > a
+                    let items = Array.from(doc.querySelectorAll('.wp-block-post-template.is-layout-flow > li.wp-block-post'));
                     
+                    // Fallback if class changes slightly
                     if (items.length === 0) {
-                        items = Array.from(doc.querySelectorAll('article.post h2 a, .entry-title a, .post-title a'));
+                        items = Array.from(doc.querySelectorAll('.wp-block-post-template li.wp-block-post'));
                     }
 
                     if (items.length === 0) {
-                        // Last Resort: Koi bhi link jo "Notice" ya "Roll Call" contain karta ho
+                        // Last Resort: Find links with specific keywords
                         items = Array.from(doc.querySelectorAll('a')).filter(a => {
                             const t = a.textContent.trim().toLowerCase();
-                            return (t.includes('notice') || t.includes('roll call') || t.includes('result')) && t.length > 15;
+                            return (t.includes('notice') || t.includes('roll call') || t.includes('result') || t.includes('exam')) && t.length > 15;
                         }).slice(0, 15);
                     }
 
@@ -155,14 +158,14 @@
 
                     // Render Exact KES Style
                     container.innerHTML = items.slice(0, 15).map(item => {
-                        const linkEl = item.querySelector('a') || item;
-                        const title = linkEl.textContent.trim();
-                        const href = linkEl.href || '#';
+                        // Extract Link and Title from <p><a href="...">Title</a></p>
+                        const linkEl = item.querySelector('p a') || item.querySelector('a');
+                        const title = linkEl ? linkEl.textContent.trim() : item.textContent.trim();
+                        const href = linkEl ? linkEl.href : '#';
                         
-                        // Date Extract
+                        // Date Extract (KES doesn't show dates in this block, so we leave it blank or use placeholder)
                         let date = '';
-                        const parent = item.closest('li') || item;
-                        const dateEl = parent.querySelector('.wp-block-latest-posts__post-date, time, .date, span.date');
+                        const dateEl = item.querySelector('.wp-block-latest-posts__post-date, time, .date');
                         if (dateEl) {
                             const raw = dateEl.textContent.trim();
                             const parsed = new Date(raw);
