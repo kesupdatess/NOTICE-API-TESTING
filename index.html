@@ -3,155 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KES Live Notices - Dummy Site</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>KES Notices - Live Feed</title>
+    <!-- Using Inter font just like KES website -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        :root { --primary: #2563eb; --bg: #f8fafc; --card: #ffffff; }
+        :root { 
+            --kes-blue: #1e3a8a; /* KES Official Blue */
+            --kes-hover: #2563eb;
+            --bg: #ffffff;
+        }
+        
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: #0f172a; padding: 20px; line-height: 1.5; }
         
-        .container { max-width: 700px; margin: 0 auto; }
-        .header { text-align: center; margin-bottom: 40px; padding-top: 20px; }
-        .header h1 { font-size: 2rem; color: var(--primary); margin-bottom: 8px; }
-        .header p { color: #64748b; font-size: 0.95rem; }
-        .badge { display: inline-block; background: #dc2626; color: white; font-size: 0.7rem; padding: 2px 8px; border-radius: 99px; font-weight: 700; vertical-align: middle; margin-left: 8px; animation: pulse 2s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-
-        .notice-card { 
-            background: var(--card); 
-            border-radius: 16px; 
-            padding: 24px; 
-            margin-bottom: 16px; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-            border-left: 5px solid var(--primary);
-            transition: all 0.2s ease;
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: var(--bg); 
+            color: #333; 
+            padding: 20px; 
+            max-width: 900px; 
+            margin: 0 auto; 
         }
-        .notice-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
-        
-        .notice-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-        .notice-date { font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-        .notice-tag { font-size: 0.7rem; background: #eff6ff; color: var(--primary); padding: 3px 10px; border-radius: 6px; font-weight: 700; }
-        
-        .notice-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 12px; color: #1e293b; }
-        .notice-excerpt { font-size: 0.9rem; color: #475569; margin-bottom: 16px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        
-        .read-more { 
-            display: inline-flex; align-items: center; gap: 6px; 
-            color: var(--primary); text-decoration: none; font-weight: 600; font-size: 0.9rem; 
-        }
-        .read-more:hover { gap: 10px; transition: gap 0.2s; }
 
-        .loading, .error { text-align: center; padding: 60px 20px; color: #64748b; }
-        .error { background: #fef2f2; color: #991b1b; border-radius: 12px; margin-top: 20px; }
-        .refresh-btn { margin-top: 10px; padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .header { 
+            text-align: center; 
+            margin-bottom: 30px; 
+            padding-bottom: 15px; 
+            border-bottom: 2px solid var(--kes-blue);
+        }
+        .header h1 { 
+            color: var(--kes-blue); 
+            font-size: 1.8rem; 
+            font-weight: 700; 
+            margin-bottom: 5px;
+        }
+        .header p { color: #666; font-size: 0.9rem; }
+
+        /* EXACT KES LIST STYLE */
+        .kes-list { list-style: none; }
+        
+        .kes-item {
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: baseline;
+            gap: 15px;
+        }
+        
+        .kes-item:last-child { border-bottom: none; }
+        
+        .kes-date {
+            font-size: 0.8rem;
+            color: #666;
+            min-width: 110px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        
+        .kes-title a {
+            color: var(--kes-blue);
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            line-height: 1.4;
+            transition: color 0.2s;
+        }
+        
+        .kes-title a:hover {
+            color: var(--kes-hover);
+            text-decoration: underline;
+        }
+
+        .loading { text-align: center; padding: 40px; color: #666; }
+        .error { 
+            background: #fee2e2; 
+            color: #991b1b; 
+            padding: 15px; 
+            border-radius: 6px; 
+            text-align: center; 
+            margin-top: 20px;
+        }
+        .refresh-btn { 
+            margin-top: 10px; 
+            padding: 6px 14px; 
+            background: var(--kes-blue); 
+            color: white; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>KES Updates <span class="badge">LIVE</span></h1>
-            <p>Real-time notices fetched from kessc.edu.in</p>
-        </div>
-
-        <div id="notices-container">
-            <div class="loading">Fetching latest notices...</div>
-        </div>
+    <div class="header">
+        <h1>NOTICES</h1>
+        <p>Live updates from KES' Shroff College</p>
     </div>
-<script>
-    const KES_NOTICES_PAGE = 'https://kessc.edu.in/notices/';
-    const PROXY = 'https://corsproxy.io/?';
 
-    async function loadNotices() {
-        const container = document.getElementById('notices-container');
-        container.innerHTML = '<div class="loading">Fetching latest notices...</div>';
+    <ul id="notices-container" class="kes-list">
+        <li class="loading">Fetching latest notices...</li>
+    </ul>
 
-        try {
-            const response = await fetch(PROXY + encodeURIComponent(KES_NOTICES_PAGE));
-            if (!response.ok) throw new Error('Failed to fetch notices page');
+    <script>
+        const KES_NOTICES_PAGE = 'https://kessc.edu.in/notices/';
+        const PROXY = 'https://corsproxy.io/?';
+
+        async function loadNotices() {
+            const container = document.getElementById('notices-container');
             
-            const htmlText = await response.text();
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(htmlText, 'text/html');
-            
-            // Target WordPress Latest Posts Block & Common Notice Lists
-            // Yeh selectors WordPress ke standard blocks ke liye hain
-            const noticeSelectors = [
-                '.wp-block-latest-posts__list li', 
-                '.wp-block-query-loop ul li',
-                '.notice-list ul li',
-                '.post-title a',
-                'article.post h2 a'
-            ];
-            
-            let noticeElements = [];
-            for (const selector of noticeSelectors) {
-                const elements = doc.querySelectorAll(selector);
-                if (elements.length > 0) {
-                    noticeElements = Array.from(elements);
-                    break;
-                }
-            }
-
-            // Fallback: Agar upar wale na milein, toh "Notice" word wale links dhundo
-            if (noticeElements.length === 0) {
-                const allLinks = Array.from(doc.querySelectorAll('a')).filter(link => {
-                    const text = link.textContent.trim().toLowerCase();
-                    return (text.includes('notice') || text.includes('roll call') || text.includes('result')) && 
-                           text.length > 10 && !['view all notices', 'notices'].includes(text);
-                });
-                noticeElements = allLinks.slice(0, 15);
-            }
-
-            if (noticeElements.length === 0) throw new Error('No notices found');
-
-            // Render Notices
-            container.innerHTML = noticeElements.slice(0, 10).map(el => {
-                // Element structure handle karna
-                let titleEl = el.querySelector('a') || el;
-                let title = titleEl.textContent.trim();
-                let link = titleEl.href || '#';
+            try {
+                const response = await fetch(PROXY + encodeURIComponent(KES_NOTICES_PAGE));
+                if (!response.ok) throw new Error('Network error');
                 
-                // Date extract karne ki koshish (agar available ho)
-                let date = 'New';
-                const dateEl = el.querySelector('.wp-block-latest-posts__post-date, time, .date');
-                if (dateEl) {
-                    const rawDate = dateEl.textContent.trim();
-                    const parsed = new Date(rawDate);
-                    if (!isNaN(parsed.getTime())) {
-                        date = parsed.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-                    } else {
-                        date = rawDate;
-                    }
+                const htmlText = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlText, 'text/html');
+                
+                // Targeting WordPress Latest Posts Block exactly as KES uses it
+                let items = Array.from(doc.querySelectorAll('.wp-block-latest-posts__list li'));
+                
+                // Fallback if block class changes
+                if (items.length === 0) {
+                    items = Array.from(doc.querySelectorAll('article.post, .post-title')).slice(0, 15);
                 }
 
-                // Skip empty or generic titles
-                if (!title || title.toLowerCase() === 'notices') return '';
+                if (items.length === 0) throw new Error('No notices found');
 
-                return `
-                    <div class="notice-card">
-                        <div class="notice-meta">
-                            <span class="notice-date">${date}</span>
-                            <span class="notice-tag">Official</span>
-                        </div>
-                        <div class="notice-title">${title}</div>
-                        <a href="${link}" target="_blank" class="read-more">Read Full Notice →</a>
-                    </div>
-                `;
-            }).filter(item => item !== '').join('');
+                container.innerHTML = items.slice(0, 15).map(item => {
+                    // Extract Date
+                    const dateEl = item.querySelector('.wp-block-latest-posts__post-date, time, .date');
+                    let date = '';
+                    if (dateEl) {
+                        const raw = dateEl.textContent.trim();
+                        const parsed = new Date(raw);
+                        date = !isNaN(parsed.getTime()) ? 
+                            parsed.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 
+                            raw;
+                    }
 
-        } catch (err) {
-            console.error('Scraping Error:', err);
-            container.innerHTML = `
-                <div class="error">
-                    <strong>️ Unable to load notices</strong><br>
-                    <small>${err.message}</small><br>
-                    <button class="refresh-btn" onclick="loadNotices()">Try Again</button>
-                </div>`;
+                    // Extract Title & Link
+                    const linkEl = item.querySelector('a');
+                    const title = linkEl ? linkEl.textContent.trim() : item.textContent.trim();
+                    const href = linkEl ? linkEl.href : '#';
+
+                    // Skip empty or generic items
+                    if (!title || title.toLowerCase() === 'notices') return '';
+
+                    return `
+                        <li class="kes-item">
+                            <span class="kes-date">${date}</span>
+                            <div class="kes-title"><a href="${href}" target="_blank">${title}</a></div>
+                        </li>
+                    `;
+                }).filter(i => i !== '').join('');
+
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = `<li class="error">Unable to load notices.<br><button class="refresh-btn" onclick="loadNotices()">Retry</button></li>`;
+            }
         }
-    }
 
-    loadNotices();
-    setInterval(loadNotices, 300000);
-</script>
+        loadNotices();
+        setInterval(loadNotices, 300000);
+    </script>
 </body>
 </html>
