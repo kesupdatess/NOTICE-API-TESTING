@@ -67,80 +67,62 @@
 
         try {
             const response = await fetch(PROXY + encodeURIComponent(KES_NOTICES_PAGE));
-            if (!response.ok) throw new Error('Failed to fetch notices page');
+            if (!response.ok) throw new Error('Failed to fetch page');
             
             const htmlText = await response.text();
             const parser = new DOMParser();
             const doc = parser.parseFromString(htmlText, 'text/html');
             
-            // Target specific notice elements (WordPress standard classes)
-            const noticeElements = doc.querySelectorAll('.notice-item, .post-title, h2.entry-title, article.post, .wp-block-latest-posts__list li');
-            
-            if (noticeElements.length === 0) {
-                // Fallback: Find links containing 'notice' but exclude generic ones
-                const allLinks = Array.from(doc.querySelectorAll('a')).filter(link => {
-                    const text = link.textContent.trim().toLowerCase();
-                    return (text.includes('notice') || text.includes('result') || text.includes('exam')) && 
-                           !['notices', 'view all notices', 'notice board'].includes(text);
-                });
+            // Target the specific notice list structure found in your HTML dump
+            // Looking for links that are inside paragraphs or list items with notice-like content
+            const allLinks = Array.from(doc.querySelectorAll('a')).filter(link => {
+                const text = link.textContent.trim();
+                const href = link.href;
                 
-                if (allLinks.length === 0) throw new Error('No valid notices found');
-                
-                container.innerHTML = allLinks.slice(0, 10).map(link => `
-                    <div class="notice-card">
-                        <div class="notice-meta">
-                            <span class="notice-date">New</span>
-                            <span class="notice-tag">Notice</span>
-                        </div>
-                        <div class="notice-title">${link.textContent.trim()}</div>
-                        <a href="${link.href}" target="_blank" class="read-more">View Notice →</a>
-                    </div>
-                `).join('');
-                return;
-            }
+                // Filter logic based on actual site structure
+                return text.length > 10 && 
+                       !text.toLowerCase().includes('skip to') &&
+                       !text.toLowerCase().includes('next page') &&
+                       !href.includes('#') &&
+                       (text.includes('2026') || text.includes('2025') || text.toLowerCase().includes('notice') || text.toLowerCase().includes('roll call'));
+            });
 
-            // Render with better date extraction
-            container.innerHTML = Array.from(noticeElements).slice(0, 10).map(el => {
-                const titleEl = el.querySelector('h2, h3, .title, a') || el;
-                const linkEl = el.querySelector('a') || titleEl;
-                const dateEl = el.querySelector('.date, time, .published, .post-date');
+            if (allLinks.length === 0) throw new Error('No valid notices found');
+
+            // Render top 10 unique notices
+            const seen = new Set();
+            container.innerHTML = allLinks.slice(0, 15).map(link => {
+                const title = link.textContent.trim();
+                if (seen.has(title)) return ''; // Skip duplicates
+                seen.add(title);
                 
-                let title = titleEl.textContent.trim();
-                let link = linkEl.href || '#';
-                let date = 'New';
-                
-                // Try multiple date formats
-                if (dateEl) {
-                    const rawDate = dateEl.textContent.trim();
-                    const parsed = new Date(rawDate);
-                    if (!isNaN(parsed.getTime())) {
-                        date = parsed.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-                    } else {
-                        // Handle relative dates like "2 days ago"
-                        date = rawDate;
-                    }
+                // Extract date from title if present (e.g., "AS ON 27.06.26")
+                let dateDisplay = 'New';
+                const dateMatch = title.match(/(\d{2}[-./]\d{2}[-./]\d{2,4})/);
+                if (dateMatch) {
+                    dateDisplay = dateMatch[1];
+                } else if (title.includes('2026') || title.includes('2025')) {
+                    const yearMatch = title.match(/(2025|2026)/);
+                    if (yearMatch) dateDisplay = yearMatch[1];
                 }
-                
-                // Skip empty or duplicate titles
-                if (!title || title.toLowerCase() === 'notices') return '';
-                
+
                 return `
                     <div class="notice-card">
                         <div class="notice-meta">
-                            <span class="notice-date">${date}</span>
+                            <span class="notice-date">${dateDisplay}</span>
                             <span class="notice-tag">Official</span>
                         </div>
                         <div class="notice-title">${title}</div>
-                        <a href="${link}" target="_blank" class="read-more">Read Full Notice →</a>
+                        <a href="${link.href}" target="_blank" class="read-more">View Notice →</a>
                     </div>
                 `;
             }).filter(item => item !== '').join('');
 
         } catch (err) {
-            console.error('Scraping Error:', err);
+            console.error('Error:', err);
             container.innerHTML = `
                 <div class="error">
-                    <strong>️ Unable to load notices</strong><br>
+                    <strong>⚠️ Unable to load notices</strong><br>
                     <small>${err.message}</small><br>
                     <button class="refresh-btn" onclick="loadNotices()">Try Again</button>
                 </div>`;
