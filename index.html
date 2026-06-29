@@ -58,73 +58,61 @@
         </div>
     </div>
 
-    <script>
-        // KES Official WordPress API Endpoint
-        const KES_API = 'https://kessc.edu.in/wp-json/wp/v2/posts?per_page=10&_fields=id,title,date,link,excerpt';
-        
-        // Multiple Proxies as Fallback (Agar ek fail ho toh dusra try karega)
-        const PROXIES = [
-            'https://corsproxy.io/?',
-            'https://api.codetabs.com/v1/proxy?quest='
-        ];
+   <script>
+    // KES Official RSS Feed (Yeh kabhi CORS error nahi dega!)
+    const KES_RSS = 'https://kessc.edu.in/feed/';
+    
+    // Free RSS to JSON Converter (GitHub Pages friendly)
+    const RSS2JSON = 'https://api.rss2json.com/v1/api.json?rss_url=';
 
-        async function loadNotices() {
-            const container = document.getElementById('notices-container');
-            container.innerHTML = '<div class="loading">Fetching latest notices...</div>';
+    async function loadNotices() {
+        const container = document.getElementById('notices-container');
+        container.innerHTML = '<div class="loading">Fetching latest notices...</div>';
 
-            for (const proxy of PROXIES) {
-                try {
-                    const response = await fetch(proxy + encodeURIComponent(KES_API));
-                    
-                    if (!response.ok) continue; // Agar error aaye toh next proxy try karo
-                    
-                    const posts = await response.json();
+        try {
+            // RSS feed ko JSON mein convert karke fetch karna
+            const response = await fetch(RSS2JSON + encodeURIComponent(KES_RSS));
+            const data = await response.json();
 
-                    if (!posts || posts.length === 0) {
-                        container.innerHTML = '<div class="error">No active notices found on KES website.</div>';
-                        return;
-                    }
-
-                    // Render Notices Cards
-                    container.innerHTML = posts.map(post => {
-                        const date = new Date(post.date).toLocaleDateString('en-IN', { 
-                            day: 'numeric', month: 'short', year: 'numeric' 
-                        });
-                        const cleanExcerpt = post.excerpt.rendered.replace(/<[^>]*>/g, '').trim().substring(0, 150) + '...';
-                        
-                        return `
-                            <div class="notice-card">
-                                <div class="notice-meta">
-                                    <span class="notice-date">${date}</span>
-                                    <span class="notice-tag">Official</span>
-                                </div>
-                                <div class="notice-title">${post.title.rendered}</div>
-                                <div class="notice-excerpt">${cleanExcerpt}</div>
-                                <a href="${post.link}" target="_blank" class="read-more">Read Full Notice →</a>
-                            </div>
-                        `;
-                    }).join('');
-                    
-                    return; // Success! Baaki proxies try karne ki zaroorat nahi
-
-                } catch (err) {
-                    console.warn(`Proxy failed: ${proxy}`, err);
-                    continue; // Keep trying next proxy
-                }
+            if (data.status !== 'ok' || !data.items || data.items.length === 0) {
+                throw new Error('No notices found in RSS feed');
             }
 
-            // Agar saare proxies fail ho jayein
+            // Render Notices Cards
+            container.innerHTML = data.items.map(item => {
+                const date = new Date(item.pubDate).toLocaleDateString('en-IN', { 
+                    day: 'numeric', month: 'short', year: 'numeric' 
+                });
+                // HTML tags remove karke clean text banana
+                const cleanExcerpt = item.description.replace(/<[^>]*>/g, '').trim().substring(0, 150) + '...';
+                
+                return `
+                    <div class="notice-card">
+                        <div class="notice-meta">
+                            <span class="notice-date">${date}</span>
+                            <span class="notice-tag">Official</span>
+                        </div>
+                        <div class="notice-title">${item.title}</div>
+                        <div class="notice-excerpt">${cleanExcerpt}</div>
+                        <a href="${item.link}" target="_blank" class="read-more">Read Full Notice →</a>
+                    </div>
+                `;
+            }).join('');
+
+        } catch (err) {
+            console.error('RSS Fetch Error:', err);
             container.innerHTML = `
                 <div class="error">
-                    <strong>️ Unable to fetch notices</strong><br>
-                    <small>KES website might be down or blocking requests.</small><br>
+                    <strong>️ Unable to load notices</strong><br>
+                    <small>${err.message}</small><br>
                     <button class="refresh-btn" onclick="loadNotices()">Try Again</button>
                 </div>`;
         }
+    }
 
-        // Load immediately and refresh every 2 minutes
-        loadNotices();
-        setInterval(loadNotices, 120000);
-    </script>
+    // Load immediately and refresh every 5 minutes
+    loadNotices();
+    setInterval(loadNotices, 300000);
+</script>
 </body>
 </html>
